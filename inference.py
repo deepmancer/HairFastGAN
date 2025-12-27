@@ -29,9 +29,12 @@ def main(model_args, args):
         df = df.sample(frac=1, random_state=42).reset_index(drop=True)
         
         # Setup paths
-        image_dir = args.data_dir / 'image'
+        image_dir = args.data_dir / 'aligned_image'
         if not image_dir.exists():
-            raise FileNotFoundError(f"image folder not found in {args.data_dir}")
+            image_dir = args.data_dir / 'image'
+            if not image_dir.exists():
+                raise FileNotFoundError(f"Neither 'aligned_image' nor 'image' folder found in {args.data_dir}")
+        
         
         output_dir = args.data_dir / 'baselines/hairfastgan'
         os.makedirs(output_dir, exist_ok=True)
@@ -42,8 +45,29 @@ def main(model_args, args):
             target_id = str(row['target_id'])
             
             # Construct image paths
-            source_path = image_dir / f'{source_id}.png'
-            target_path = image_dir / f'{target_id}.png'
+            # Construct image paths - check multiple extensions
+            source_path = None
+            target_path = None
+            
+            for ext in ['.png', '.jpeg', '.jpg', '.webp']:
+                if source_path is None:
+                    candidate = image_dir / f'{source_id}{ext}'
+                    if candidate.exists():
+                        source_path = candidate
+                
+                if target_path is None:
+                    candidate = image_dir / f'{target_id}{ext}'
+                    if candidate.exists():
+                        target_path = candidate
+                
+                if source_path and target_path:
+                    break
+            
+            # Set to default if not found (will be caught by exists check below)
+            if source_path is None:
+                source_path = image_dir / f'{source_id}.png'
+            if target_path is None:
+                target_path = image_dir / f'{target_id}.png'
             
             # Check if images exist
             if not source_path.exists():
